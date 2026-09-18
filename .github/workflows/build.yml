@@ -121,7 +121,6 @@ jobs:
                   settings.setJavaScriptEnabled(true);
                   settings.setDomStorageEnabled(true);
                   settings.setDatabaseEnabled(true);
-                  // Videolarin avtomatik acilmasi ucun vacibdir
                   settings.setMediaPlaybackRequiresUserGesture(false); 
                   settings.setUseWideViewPort(true);
                   settings.setLoadWithOverviewMode(true);
@@ -129,7 +128,6 @@ jobs:
                   webView.setWebViewClient(new WebViewClient());
                   webView.setWebChromeClient(new WebChromeClient());
                   
-                  // IPTV Player HTML və JS kodları (HLS dəstəkli)
                   String iptvHtml = "<!DOCTYPE html>\n" +
                           "<html>\n" +
                           "<head>\n" +
@@ -156,10 +154,9 @@ jobs:
                           "        var title = document.getElementById('title');\n" +
                           "        var hls = new Hls();\n" +
                           "        \n" +
-                          "        // SƏNİN UZAQDAN İDARƏ EDƏCƏYİN FAYL (GitHub-dakı repodan çəkir)\n" +
-                          "        var remoteUrl = 'https://raw.githubusercontent.com/xosrov36/Zalam-IPTV/main/kanallar.json';\n" +
+                          "        // Dəqiq link daxil edildi:\n" +
+                          "        var remoteUrl = 'https://raw.githubusercontent.com/xosrov36/Gabalatelecom/refs/heads/main/.github/workflows/kanallar.json';\n" +
                           "        \n" +
-                          "        // Ehtiyat (Fallback) kanallar - Uzaqdakı fayl tapılmasa bunlar açılacaq\n" +
                           "        var defaultChannels = [\n" +
                           "            { name: 'Kanal 1 (Test Yayım)', url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8' },\n" +
                           "            { name: 'Kanal 2 (Test Yayım)', url: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8' }\n" +
@@ -187,11 +184,9 @@ jobs:
                           "                btn.onclick = function() { loadChannel(ch.name, ch.url); };\n" +
                           "                list.appendChild(btn);\n" +
                           "            });\n" +
-                          "            // İlk kanalı avtomatik başlat\n" +
                           "            if(channels.length > 0) loadChannel(channels[0].name, channels[0].url);\n" +
                           "        }\n" +
                           "\n" +
-                          "        // Kanalları uzaqdan çək\n" +
                           "        fetch(remoteUrl + '?t=' + new Date().getTime())\n" +
                           "            .then(res => res.json())\n" +
                           "            .then(data => renderChannels(data))\n" +
