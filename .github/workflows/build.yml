@@ -1,0 +1,232 @@
+name: Build Zalam IPTV APK
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Download Gradle 8.5
+        run: |
+          wget -q https://services.gradle.org/distributions/gradle-8.5-bin.zip
+          unzip -q gradle-8.5-bin.zip
+          chmod +x gradle-8.5/bin/gradle
+
+      - name: Generate Project Files
+        run: |
+          mkdir -p app/src/main/java/com/zalam/iptv app/src/main/res/values
+
+          cat << 'EOF' > gradle.properties
+          android.useAndroidX=true
+          android.enableJetifier=true
+          EOF
+
+          cat << 'EOF' > settings.gradle
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+          dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
+          rootProject.name = "Zalam_IPTV"
+          include ':app'
+          EOF
+
+          cat << 'EOF' > build.gradle
+          plugins { id 'com.android.application' version '8.2.2' apply false }
+          EOF
+
+          cat << 'EOF' > app/build.gradle
+          plugins { id 'com.android.application' }
+          android {
+              namespace 'com.zalam.iptv'
+              compileSdk 34
+              defaultConfig {
+                  applicationId "com.zalam.iptv"
+                  minSdk 21
+                  targetSdk 34
+                  versionCode 1
+                  versionName "1.0"
+              }
+              buildTypes { release { minifyEnabled false } }
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+          }
+          dependencies { implementation 'androidx.appcompat:appcompat:1.6.1' }
+          EOF
+
+          cat << 'EOF' > app/src/main/res/values/styles.xml
+          <resources>
+              <style name="Theme.ZalamIPTV" parent="Theme.AppCompat.Light.NoActionBar">
+                  <item name="android:windowNoTitle">true</item>
+                  <item name="android:windowActionBar">false</item>
+                  <item name="android:statusBarColor">#000000</item>
+              </style>
+          </resources>
+          EOF
+
+          cat << 'EOF' > app/src/main/AndroidManifest.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.INTERNET" />
+              <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+              <application
+                  android:allowBackup="true"
+                  android:icon="@android:drawable/ic_media_play"
+                  android:label="Zalam IPTV"
+                  android:theme="@style/Theme.ZalamIPTV"
+                  android:hardwareAccelerated="true"
+                  android:usesCleartextTraffic="true">
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true"
+                      android:configChanges="orientation|screenSize|keyboardHidden">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+          cat << 'EOF' > app/src/main/java/com/zalam/iptv/MainActivity.java
+          package com.zalam.iptv;
+
+          import android.annotation.SuppressLint;
+          import android.os.Bundle;
+          import android.webkit.WebChromeClient;
+          import android.webkit.WebSettings;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
+          import androidx.appcompat.app.AppCompatActivity;
+
+          public class MainActivity extends AppCompatActivity {
+              private WebView webView;
+
+              @SuppressLint("SetJavaScriptEnabled")
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  webView = new WebView(this);
+                  setContentView(webView);
+
+                  WebSettings settings = webView.getSettings();
+                  settings.setJavaScriptEnabled(true);
+                  settings.setDomStorageEnabled(true);
+                  settings.setDatabaseEnabled(true);
+                  // Videolarin avtomatik acilmasi ucun vacibdir
+                  settings.setMediaPlaybackRequiresUserGesture(false); 
+                  settings.setUseWideViewPort(true);
+                  settings.setLoadWithOverviewMode(true);
+
+                  webView.setWebViewClient(new WebViewClient());
+                  webView.setWebChromeClient(new WebChromeClient());
+                  
+                  // IPTV Player HTML və JS kodları (HLS dəstəkli)
+                  String iptvHtml = "<!DOCTYPE html>\n" +
+                          "<html>\n" +
+                          "<head>\n" +
+                          "    <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no' />\n" +
+                          "    <script src='https://cdn.jsdelivr.net/npm/hls.js@latest'></script>\n" +
+                          "    <style>\n" +
+                          "        body { margin: 0; background: #121212; color: white; font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; }\n" +
+                          "        #video-container { width: 100%; background: #000; flex-shrink: 0; }\n" +
+                          "        video { width: 100%; height: auto; max-height: 40vh; }\n" +
+                          "        #title { padding: 15px; font-size: 20px; font-weight: bold; background: #1f1f1f; text-align: center; border-bottom: 2px solid #e50914; }\n" +
+                          "        #channel-list { flex-grow: 1; overflow-y: auto; padding: 10px; }\n" +
+                          "        .channel-btn { background: #2b2b2b; color: white; border: 1px solid #444; padding: 15px; margin-bottom: 10px; width: 100%; text-align: left; font-size: 16px; border-radius: 8px; font-weight: bold; }\n" +
+                          "        .channel-btn:active { background: #e50914; }\n" +
+                          "    </style>\n" +
+                          "</head>\n" +
+                          "<body>\n" +
+                          "    <div id='video-container'>\n" +
+                          "        <video id='video' controls autoplay playsinline></video>\n" +
+                          "    </div>\n" +
+                          "    <div id='title'>Kanallar Yüklənir...</div>\n" +
+                          "    <div id='channel-list'></div>\n" +
+                          "    <script>\n" +
+                          "        var video = document.getElementById('video');\n" +
+                          "        var title = document.getElementById('title');\n" +
+                          "        var hls = new Hls();\n" +
+                          "        \n" +
+                          "        // SƏNİN UZAQDAN İDARƏ EDƏCƏYİN FAYL (GitHub-dakı repodan çəkir)\n" +
+                          "        var remoteUrl = 'https://raw.githubusercontent.com/xosrov36/Zalam-IPTV/main/kanallar.json';\n" +
+                          "        \n" +
+                          "        // Ehtiyat (Fallback) kanallar - Uzaqdakı fayl tapılmasa bunlar açılacaq\n" +
+                          "        var defaultChannels = [\n" +
+                          "            { name: 'Kanal 1 (Test Yayım)', url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8' },\n" +
+                          "            { name: 'Kanal 2 (Test Yayım)', url: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8' }\n" +
+                          "        ];\n" +
+                          "\n" +
+                          "        function loadChannel(name, url) {\n" +
+                          "            title.innerText = name;\n" +
+                          "            if (Hls.isSupported()) {\n" +
+                          "                hls.loadSource(url);\n" +
+                          "                hls.attachMedia(video);\n" +
+                          "                hls.on(Hls.Events.MANIFEST_PARSED, function() { video.play(); });\n" +
+                          "            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {\n" +
+                          "                video.src = url;\n" +
+                          "                video.addEventListener('loadedmetadata', function() { video.play(); });\n" +
+                          "            }\n" +
+                          "        }\n" +
+                          "\n" +
+                          "        function renderChannels(channels) {\n" +
+                          "            var list = document.getElementById('channel-list');\n" +
+                          "            list.innerHTML = '';\n" +
+                          "            channels.forEach(function(ch) {\n" +
+                          "                var btn = document.createElement('button');\n" +
+                          "                btn.className = 'channel-btn';\n" +
+                          "                btn.innerText = '▶ ' + ch.name;\n" +
+                          "                btn.onclick = function() { loadChannel(ch.name, ch.url); };\n" +
+                          "                list.appendChild(btn);\n" +
+                          "            });\n" +
+                          "            // İlk kanalı avtomatik başlat\n" +
+                          "            if(channels.length > 0) loadChannel(channels[0].name, channels[0].url);\n" +
+                          "        }\n" +
+                          "\n" +
+                          "        // Kanalları uzaqdan çək\n" +
+                          "        fetch(remoteUrl + '?t=' + new Date().getTime())\n" +
+                          "            .then(res => res.json())\n" +
+                          "            .then(data => renderChannels(data))\n" +
+                          "            .catch(err => { \n" +
+                          "                console.log('Xəta, ehtiyat kanallar açılır.'); \n" +
+                          "                renderChannels(defaultChannels); \n" +
+                          "            });\n" +
+                          "    </script>\n" +
+                          "</body>\n" +
+                          "</html>";
+
+                  webView.loadDataWithBaseURL("https://zalam-iptv.com", iptvHtml, "text/html", "UTF-8", null);
+              }
+
+              @SuppressWarnings("deprecation")
+              @Override
+              public void onBackPressed() {
+                  if (webView != null && webView.canGoBack()) {
+                      webView.goBack();
+                  } else {
+                      super.onBackPressed();
+                  }
+              }
+          }
+          EOF
+
+      - name: Build APK
+        run: |
+          export ANDROID_HOME=${ANDROID_HOME:-$ANDROID_SDK_ROOT}
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses 2>/dev/null || true
+          ./gradle-8.5/bin/gradle assembleDebug --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: zalam-iptv-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          
